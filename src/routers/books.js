@@ -9,7 +9,7 @@ const booksRouter = express.Router();
 
 //...........query - get ..............//
 booksRouter.get("/", (req, res) => {
-  db.query("SELECT * FROM books")
+  db.query("SELECT * FROM books LIMIT 7 OFFSET 7")
     .then((databaseResult) => {
       console.log(databaseResult);
       res.json({ books: databaseResult.rows });
@@ -61,5 +61,58 @@ booksRouter.post("/", (req, res) => {
     res.json({ newBook: newlyAddedBook.rows });
   });
 });
+//.........DELETE..........//
+booksRouter.delete("/:id", (req, res) => {
+  const deleteBookQuery = `DELETE FROM books WHERE id= $1 RETURNING * `;
+  const deleteValues = [req.params.id];
+  db.query(deleteBookQuery, deleteValues)
+    .then((dbResults) => {
+      res.json({ book: dbResults.rows[0] });
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500);
+      res.json({ error: "error" });
+    });
+});
+
+//........ UPDATE ..........//
+
+booksRouter.put("/:id", (req, res) => {
+  const updateBookQuery = `
+  UPDATE books SET
+  title = $1,
+  author = $2,
+  topic = $3,
+  publicationdate = $4,
+  pages = $5
+   WHERE id  = $6
+   RETURNING *`;
+  const updateValues = [
+    req.body.title,
+    req.body.author,
+    req.body.topic,
+    req.body.publicationdate,
+    req.body.pages,
+    req.params.id,
+  ];
+
+  db.query(updateBookQuery, updateValues)
+    .then((dbResults) => {
+      console.log(dbResults);
+      if (dbResults.rowCount === 0) {
+        res.status(404);
+        res.json({ error: "error, book not found" });
+        return;
+      }
+      res.json({ book: dbResults.rows[0] });
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500);
+      res.json({ error: "error" });
+    });
+});
+
 //...........Set up step 4..............//
 module.exports = booksRouter;

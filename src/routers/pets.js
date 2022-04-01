@@ -11,6 +11,14 @@ const petsRouter = express.Router();
 //...........query - get ..............//
 petsRouter.get("/", (req, res) => {
   const selectAllPetsQuery = "SELECT * FROM pets";
+
+  const selectValue = [];
+  const queries = [];
+
+  if (req.query.page) {
+    queries.push({ column: "page", value: req.query.page });
+  }
+
   db.query(selectAllPetsQuery)
     .then((databaseResult) => {
       console.log(databaseResult);
@@ -64,5 +72,63 @@ petsRouter.post("/", (req, res) => {
     res.json({ pet: petResult[0] });
   });
 });
+
+petsRouter.delete("/:id", (req, res) => {
+  const deletePetQuery = `DELETE FROM pets WHERE id= $1 RETURNING * `;
+  const deleteValues = [req.params.id];
+  db.query(deletePetQuery, deleteValues)
+    .then((dbResults) => {
+      res.json({ pet: dbResults.rows[0] });
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500);
+      res.json({ error: "error" });
+    });
+});
+
+petsRouter.put("/:id", (req, res) => {
+  const updatePetQuery = `
+  UPDATE pets SET
+   name = $1,
+   age = $2,
+   type = $3,
+   breed = $4,
+   microchip = $5
+   WHERE id  = $6
+   RETURNING *`;
+
+  const updateValues = [
+    req.body.name,
+    req.body.age,
+    req.body.type,
+    req.body.breed,
+    req.body.microchip,
+    req.params.id,
+  ];
+
+  db.query(updatePetQuery, updateValues)
+    .then((dbResults) => {
+      console.log(dbResults);
+      if (dbResults.rowCount === 0) {
+        res.status(404);
+        res.json({ error: "error, pet not found" });
+        return;
+      }
+      res.json({ pet: dbResults.rows[0] });
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500);
+      res.json({ error: "error" });
+    });
+});
+
+// SELECT select_list
+//     FROM table_expression
+//     [ ORDER BY ... ]
+//     [ LIMIT { number | ALL } ] [ OFFSET number ]
+
+const setPageLimit = `SELECT * FROM pets LIMIT 12 OFFSET 5`;
 
 module.exports = petsRouter;
